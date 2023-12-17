@@ -10,7 +10,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/basket")
-@CrossOrigin
 public class BasketController {
 
     @Autowired

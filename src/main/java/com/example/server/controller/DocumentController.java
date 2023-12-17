@@ -10,7 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/document")
-@CrossOrigin
 public class DocumentController {
 
     @Autowired
