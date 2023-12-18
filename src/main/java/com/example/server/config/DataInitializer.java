@@ -4,10 +4,16 @@ import com.example.server.controller.UserController;
 import com.example.server.entity.ProductEntity;
 import com.example.server.entity.RoleEntity;
 import com.example.server.entity.WarehouseEntity;
+import com.example.server.exception.UniversalException;
+import com.example.server.exception.UserAlreadyExistException;
+import com.example.server.exception.UserInvalidDataException;
+import com.example.server.exception.UserUnauthorizedException;
 import com.example.server.repository.ProductRepo;
 import com.example.server.repository.RoleRepo;
 import com.example.server.repository.UserRepo;
 import com.example.server.repository.WarehouseRepo;
+import com.example.server.security.JwtTokenProvider;
+import com.example.server.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -27,26 +33,30 @@ public class DataInitializer {
     private final RoleRepo roleRepository;
     private final WarehouseRepo warehouseRepository;
     private final UserRepo userRepository;
-    private final UserController userController;
+    private final UserService userService;
     private final String documentsPath;
+
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Autowired
     public DataInitializer(ProductRepo productRepository,
                            RoleRepo roleRepository,
                            WarehouseRepo warehouseRepository,
                            UserRepo userRepository,
-                           UserController userController,
-                           @Value("${upload.path}") String documentsPath) {
+                           UserService userService,
+                           @Value("${upload.path}") String documentsPath,
+                           JwtTokenProvider jwtTokenProvider) {
         this.productRepository = productRepository;
         this.roleRepository = roleRepository;
         this.warehouseRepository = warehouseRepository;
         this.userRepository = userRepository;
-        this.userController = userController;
+        this.userService = userService;
         this.documentsPath = documentsPath;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @EventListener
-    public void initialize(ContextRefreshedEvent event) {
+    public void initialize(ContextRefreshedEvent event) throws UserAlreadyExistException, UniversalException, UserInvalidDataException, UserUnauthorizedException {
         // Удаляем все файлы из папки
         clearDirectory(Paths.get(documentsPath));
 
@@ -116,7 +126,6 @@ public class DataInitializer {
         Map<String, Object> user1 = new HashMap<>();
         user1.put("login", "clie");
         user1.put("password", "Aa1425");
-        user1.put("role", "client");
 
         Map<String, Object> user2 = new HashMap<>();
         user2.put("login", "acco");
@@ -138,11 +147,14 @@ public class DataInitializer {
         user5.put("password", "Aa1425");
         user5.put("role", "chef");
 
-        userController.registration(user1);
-        userController.registration(user2);
-        userController.registration(user3);
-        userController.registration(user4);
-        userController.registration(user5);
+        userService.registration(user1);
+
+        String token = jwtTokenProvider.generateTokenForAccountant();
+
+        userService.registrationStaff(token, user2);
+        userService.registrationStaff(token, user3);
+        userService.registrationStaff(token, user4);
+        userService.registrationStaff(token, user5);
         System.out.println("Инициализация прошла успешно!");
     }
 

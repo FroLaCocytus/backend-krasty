@@ -29,6 +29,24 @@ public class UserController {
         }
     }
 
+    /*Функция регистрации нового пользователя*/
+    @PostMapping("/registration/staff")
+    public ResponseEntity<?> registrationStaff(@RequestHeader("Authorization") String authorizationHeader,
+                                               @RequestBody Map<String, Object> request){
+        try {
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(userService.registrationStaff(token, request));
+        } catch (UniversalException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (UserAlreadyExistException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (UserInvalidDataException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Произошла ошибка:\n" + e);
+        }
+    }
+
     /*Функция аутентификации пользователя*/
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserEntity user) {
@@ -47,8 +65,8 @@ public class UserController {
 
     @GetMapping("/auth")
     public ResponseEntity<?> check(@RequestHeader("Authorization") String authorizationHeader) {
-        String token = authorizationHeader.substring(7);
         try {
+            String token = authorizationHeader.substring(7);
             return ResponseEntity.ok().body(userService.check(token));
         } catch (UserUnauthorizedException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -59,8 +77,8 @@ public class UserController {
 
     @GetMapping("/info")
     public ResponseEntity getUserInfo(@RequestHeader("Authorization") String authorizationHeader) {
-        String token = authorizationHeader.substring(7);
         try {
+            String token = authorizationHeader.substring(7);
             return ResponseEntity.ok().body(userService.getUserInfo(token));
         } catch (UserUnauthorizedException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -73,8 +91,8 @@ public class UserController {
     @PutMapping("/info")
     public ResponseEntity updateUserInfo(@RequestHeader("Authorization") String authorizationHeader,
                                          @RequestBody UserEntity request) {
-        String token = authorizationHeader.substring(7);
         try {
+            String token = authorizationHeader.substring(7);
             return ResponseEntity.ok().body(userService.updateUserInfo(token, request));
         } catch (UserUnauthorizedException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

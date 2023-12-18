@@ -7,26 +7,21 @@ import com.example.server.repository.RoleRepo;
 import com.example.server.repository.UserRepo;
 
 //JWT token и хеширование пароля
-import com.example.server.repository.WarehouseRepo;
+import com.example.server.security.JwtTokenProvider;
 import org.mindrot.jbcrypt.BCrypt;
-import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import java.util.Date;
+
+import com.example.server.repository.WarehouseRepo;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class UserService {
 
-    private static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 часа
     private static final int MIN_LOGIN_LENGTH = 4;
     private static final int MAX_LOGIN_LENGTH = 20;
     private static final int MIN_PASSWORD_LENGTH = 6;
@@ -35,37 +30,17 @@ public class UserService {
     private final BasketRepo basketRepo;
     private final RoleRepo roleRepo;
     private final WarehouseRepo warehouseRepo;
-    private final String secretKey;
+
+    private final JwtTokenProvider jwtTokenProvider;
 
 
     @Autowired
-    public UserService(UserRepo userRepo, BasketRepo basketRepo, RoleRepo roleRepo, WarehouseRepo warehouseRepo, @Value("${SECRET_KEY}") String secretKey) {
+    public UserService(UserRepo userRepo, BasketRepo basketRepo, RoleRepo roleRepo, WarehouseRepo warehouseRepo, JwtTokenProvider jwtTokenProvider) {
         this.userRepo = userRepo;
         this.basketRepo = basketRepo;
         this.roleRepo = roleRepo;
         this.warehouseRepo = warehouseRepo;
-        this.secretKey = secretKey;
-    }
-
-    public static String generateJwt(Integer id, String login, String role, String secretKey) {
-        Date expirationDate = new Date(System.currentTimeMillis() + EXPIRATION_TIME);
-
-        return Jwts.builder()
-                .claim("id", id)
-                .claim("login", login)
-                .claim("role", role)
-                .setExpiration(expirationDate)
-                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    public static Claims verifyToken(String token, String secretKey) {
-        try {
-            JwtParser parser = Jwts.parserBuilder().setSigningKey(Keys.hmacShaKeyFor(secretKey.getBytes())).build();
-            return parser.parseClaimsJws(token).getBody();
-        } catch (Exception e) {
-            return null; // Возвращаем null в случае неверного или истекшего токена
-        }
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     private void validateUserEntity(UserEntity user) throws UserInvalidDataException {
@@ -84,6 +59,43 @@ public class UserService {
 
         String userLogin = (String) request.get("login");
         String userPassword = (String) request.get("password");
+
+        RoleEntity userRole = roleRepo.findByName("client");
+
+        UserEntity user = new UserEntity(userLogin, userPassword, userRole);
+        validateUserEntity(user);
+
+        if(userRepo.findByLogin(user.getLogin()) != null) {
+            throw new UserAlreadyExistException("Пользователь с таким именем уже существует");
+        }
+
+        user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt())); //Шифруем пароль для БД
+        UserEntity userDB = userRepo.save(user);
+
+        // Создаём для клиента корзину
+        BasketEntity basket = new BasketEntity(userDB);
+        basketRepo.save(basket);
+
+        // Создаём JWT токен и отправляем ответ с сервера
+        String jwtToken = jwtTokenProvider.generateToken(userDB.getId(), userDB.getLogin(), userDB.getRoleId().getName());
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", jwtToken);
+        return response;
+    }
+
+    public Map<String, Object> registrationStaff(String token, Map<String, Object> request) throws UserAlreadyExistException,
+            UserInvalidDataException, UserUnauthorizedException, UniversalException {
+
+        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
+        if (creatorRole == null){
+            throw new UserUnauthorizedException("Пользователь не авторизован");
+        }
+        if (!creatorRole.equals("accountant")){
+            throw new UniversalException("У вас нету доступа к этому действию");
+        }
+
+        String userLogin = (String) request.get("login");
+        String userPassword = (String) request.get("password");
         RoleEntity userRole = roleRepo.findByName((String) request.get("role"));
 
         UserEntity user = new UserEntity(userLogin, userPassword, userRole);
@@ -96,27 +108,23 @@ public class UserService {
         user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt())); //Шифруем пароль для БД
         UserEntity userDB = userRepo.save(user);
 
-        // Если пользователь клиент создаём для него корзину
-        if(user.getRoleId().getName().equals("client")) {
-            BasketEntity basket = new BasketEntity(userDB);
-            basketRepo.save(basket);
-        }
-
         // Если пользователь складовщик связываем его со складом (пока что захардкожен 1 склад)
         if(user.getRoleId().getName().equals("merchandiser")) {
             Optional<WarehouseEntity> optionalWarehouseEntity = warehouseRepo.findById(1);
+            if (optionalWarehouseEntity.isEmpty()) {
+                throw new UniversalException("Склад не найден");
+            }
             WarehouseEntity warehouseDB = optionalWarehouseEntity.get();
             warehouseDB.setUserId(userDB);
             warehouseRepo.save(warehouseDB);
         }
         // Создаём JWT токен и отправляем ответ с сервера
-        String jwtToken = generateJwt(userDB.getId(), userDB.getLogin(), userDB.getRoleId().getName(),secretKey);
+        String jwtToken = jwtTokenProvider.generateToken(userDB.getId(), userDB.getLogin(), userDB.getRoleId().getName());
         Map<String, Object> response = new HashMap<>();
         response.put("token", jwtToken);
 
         return response;
     }
-
 
     public Map<String, Object> login(UserEntity user) throws UserNotFoundException,
             UserInvalidDataException, UserIncorrectPasswordException {
@@ -133,7 +141,7 @@ public class UserService {
         }
 
         // Создаём JWT токен и отправляем ответ с сервера
-        String jwtToken = generateJwt(userDB.getId(), userDB.getLogin(), userDB.getRoleId().getName(),secretKey);
+        String jwtToken = jwtTokenProvider.generateToken(userDB.getId(), userDB.getLogin(), userDB.getRoleId().getName());
         Map<String, Object> response = new HashMap<>();
         response.put("token", jwtToken);
 
@@ -143,14 +151,14 @@ public class UserService {
 
     public Map<String, Object> check(String token) throws UserUnauthorizedException{
 
-        Claims tokenPayload = verifyToken(token, secretKey);
+        Claims tokenPayload = jwtTokenProvider.verifyToken(token);
         if (tokenPayload == null){
             throw new UserUnauthorizedException("Пользователь не авторизован");
         }
         UserEntity userDB = userRepo.findByLogin(tokenPayload.get("login", String.class));
 
         // Создаём JWT токен и отправляем ответ с сервера
-        String jwtToken = generateJwt(userDB.getId(), userDB.getLogin(), userDB.getRoleId().getName(), secretKey);
+        String jwtToken = jwtTokenProvider.generateToken(userDB.getId(), userDB.getLogin(), userDB.getRoleId().getName());
         Map<String, Object> response = new HashMap<>();
         response.put("token", jwtToken);
 
@@ -159,7 +167,7 @@ public class UserService {
 
     public Map<String, Object> getUserInfo(String token) throws UserUnauthorizedException{
 
-        Claims tokenPayload = verifyToken(token, secretKey);
+        Claims tokenPayload = jwtTokenProvider.verifyToken(token);
         if (tokenPayload == null){
             throw new UserUnauthorizedException("Пользователь не авторизован");
         }
@@ -174,9 +182,9 @@ public class UserService {
     }
 
 
-    public Object updateUserInfo(String token, UserEntity request) throws UserUnauthorizedException{
+    public Map<String, Object> updateUserInfo(String token, UserEntity request) throws UserUnauthorizedException{
 
-        Claims tokenPayload = verifyToken(token, secretKey);
+        Claims tokenPayload = jwtTokenProvider.verifyToken(token);
 
         if (tokenPayload == null){
             throw new UserUnauthorizedException("Пользователь не авторизован");
