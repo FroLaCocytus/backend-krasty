@@ -7,6 +7,7 @@ import com.example.server.entity.RoleEntity;
 import com.example.server.exception.UniversalException;
 import com.example.server.repository.*;
 
+import com.example.server.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -42,13 +43,19 @@ public class DocumentService {
     private final RoleRepo roleRepo;
     private final RoleDocumentRepo roleDocumentRepo;
     private final String uploadPath;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Autowired
-    public DocumentService(DocumentRepo documentRepo, RoleRepo roleRepo, RoleDocumentRepo roleDocumentRepo, @Value("${upload.path}") String uploadPath) {
+    public DocumentService(DocumentRepo documentRepo,
+                           RoleRepo roleRepo,
+                           RoleDocumentRepo roleDocumentRepo,
+                           @Value("${upload.path}") String uploadPath,
+                           JwtTokenProvider jwtTokenProvider) {
         this.documentRepo = documentRepo;
         this.roleRepo = roleRepo;
         this.roleDocumentRepo = roleDocumentRepo;
         this.uploadPath = uploadPath;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
 
@@ -86,26 +93,23 @@ public class DocumentService {
         }
     }
 
-    public Map<String, Object> createDocument(MultipartFile file, String description, String role, String roles) throws UniversalException, IOException {
-
-        if (!role.equals("accountant")){
+    public Map<String, Object> createDocument(String token, MultipartFile file, String description, String roles) throws UniversalException, IOException {
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("accountant")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
         // Проверяем что все параметры не равны нулю
         if (description.isEmpty() || roles.isEmpty()) {
             throw new UniversalException("Не удалось загрузить документ");
         }
-
         if (file.isEmpty()) {
             throw new UniversalException("Не удалось загрузить документ: документ пустой");
         }
-
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
         // Проверяем чтобы имя не содержало выход к родительскому каталогу
         if (fileName.contains("..")) {
             throw new UniversalException("Недопустимое имя файла");
         }
-
         // Проверяем MIME-тип файла
         String mimeType = file.getContentType();
         if (!"application/vnd.ms-excel".equals(mimeType) &&
@@ -114,28 +118,23 @@ public class DocumentService {
                 !"application/vnd.openxmlformats-officedocument.wordprocessingml.document".equals(mimeType)) {
             throw new UniversalException("Недопустимый тип файла. Допускаются только документы MS Word и MS Excel.");
         }
-
         //Получаем дату
         LocalDate currentDate = LocalDate.now(ZoneId.of("Europe/Moscow"));
-
         // Проверяем размер файла, чтобы он не превышал 100 МБ
         if (file.getSize() > FILE_MAX_SIZE) {
             throw new UniversalException("Размер файла не должен превышать 100 МБ");
         }
-        // Сохраняем файл на сервер
-        Path filePath = Path.of(uploadPath, fileName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
         // Проверим что документа с таким именем не существует
         DocumentEntity documentDB = documentRepo.findByTitle(fileName);
         if (documentDB != null){
             throw new UniversalException("Документ с таким именем уже существует");
         }
-
-        // Сохраняем документ
+        // Сохраняем файл на сервер
+        Path filePath = Path.of(uploadPath, fileName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        // Сохраняем документ в БД
         DocumentEntity documentEntity = new DocumentEntity(fileName, description, currentDate, "doc/" + fileName);
         documentEntity = documentRepo.save(documentEntity);
-
         // Получим список ролей
         List<String> listRoles = stringToList(roles);
         List<RoleEntity> listRoleEntity = verifyRolesAndGetRoleEntities(listRoles);
@@ -152,12 +151,11 @@ public class DocumentService {
         return response;
     }
 
-    public Map<String, Object> updateDocument(Integer id, String description, String role, String roles) throws UniversalException, IOException {
-
-        if (!role.equals("accountant")){
+    public Map<String, Object> updateDocument(String token, Integer id, String description, String roles) throws UniversalException, IOException {
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("accountant")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
-
         // Проверяем что все параметры не равны нулю
         if (id == null || description.isEmpty()) {
             throw new UniversalException("Не удалось загрузить документ");
@@ -191,15 +189,14 @@ public class DocumentService {
         return response;
     }
 
-    public void deleteDocument(Integer id, String role) throws UniversalException{
-
-        if (!role.equals("accountant")){
+    public void deleteDocument(String token, Integer id) throws UniversalException{
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("accountant")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
         if (id == null) {
             throw new UniversalException("Некорректные данные");
         }
-
         // Получаем документ из репозитория
         Optional<DocumentEntity> optionalDocumentEntity = documentRepo.findById(id);
         if (optionalDocumentEntity.isEmpty()) {
@@ -229,7 +226,6 @@ public class DocumentService {
         if (id == null) {
             throw new UniversalException("Некорректные данные");
         }
-
         // Получаем документ из репозитория
         Optional<DocumentEntity> optionalDocumentEntity = documentRepo.findById(id);
         if (optionalDocumentEntity.isEmpty()) {
@@ -255,47 +251,20 @@ public class DocumentService {
         return response;
     }
 
-    public Page<Map<String, Object>> getAll(int page, int size, String sortBy, String role) throws UniversalException {
-
-        if (!role.equals("accountant")){
-            throw new UniversalException("У вас нету доступа к этому действию");
-        }
+    public Page<Map<String, Object>> getAll(String token, int page, int size, String sortBy) throws UniversalException {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
-        Page<DocumentEntity> documentPage = documentRepo.findAll(pageable);
-
-        Page<Map<String, Object>> responsePage = documentPage.map(document -> {
-            // Здесь мы конвертируем каждый DocumentEntity в Map<String, Object>
-            Map<String, Object> response = new HashMap<>();
-            response.put("id", document.getId());
-            response.put("title", document.getTitle());
-            response.put("description", document.getDescription());
-            response.put("date", document.getDate());
-            response.put("path", document.getPath());
-
-            // Получаем связанные роли для каждого документа
-            List<RoleDocumentEntity> roleDocuments = roleDocumentRepo.findByDocumentId(document);
-            List<RoleEntity> roles = roleDocuments.stream()
-                    .map(RoleDocumentEntity::getRoleId)
+        Page<DocumentEntity> documentPage;
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (userRole.equals("accountant")){
+            documentPage = documentRepo.findAll(pageable);
+        } else {
+            // Если пользователь имеет другую роль, получить только документы этой роли
+            List<RoleDocumentEntity> roleDocs = roleDocumentRepo.findByRoleId_Name(userRole);
+            List<Integer> documentIds = roleDocs.stream()
+                    .map(roleDoc -> roleDoc.getDocumentId().getId())
                     .collect(Collectors.toList());
-
-            response.put("roles", roles);
-            return response;
-        });
-
-        return responsePage;
-    }
-
-    public Page<Map<String, Object>> getAllByRole(int page, int size, String sortBy, String roleName) throws UniversalException {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
-
-        // Метод findByRoleId_Name уже должен быть определен в roleDocumentRepo
-        List<RoleDocumentEntity> roleDocs = roleDocumentRepo.findByRoleId_Name(roleName);
-        List<Integer> documentIds = roleDocs.stream()
-                .map(roleDoc -> roleDoc.getDocumentId().getId()) // getId() возвращает Integer
-                .collect(Collectors.toList());
-
-        // Метод findByIdIn должен быть определен в documentRepo
-        Page<DocumentEntity> documentPage = documentRepo.findByIdIn(documentIds, pageable);
+            documentPage = documentRepo.findByIdIn(documentIds, pageable);
+        }
 
         Page<Map<String, Object>> responsePage = documentPage.map(document -> {
             Map<String, Object> response = new HashMap<>();
@@ -305,8 +274,18 @@ public class DocumentService {
             response.put("date", document.getDate());
             response.put("path", document.getPath());
 
-            // Нет необходимости получать роли заново, поскольку мы уже их знаем
-            response.put("roles", Collections.singletonList(roleName));
+            if (!userRole.equals("accountant")) {
+                // Если роль не бухгалтер, установить только эту роль
+                response.put("roles", Collections.singletonList(userRole));
+            } else {
+                // Если бухгалтер, получить все связанные роли для каждого документа
+                List<RoleDocumentEntity> roleDocuments = roleDocumentRepo.findByDocumentId(document);
+                List<RoleEntity> roles = roleDocuments.stream()
+                        .map(RoleDocumentEntity::getRoleId)
+                        .collect(Collectors.toList());
+                response.put("roles", roles);
+            }
+
             return response;
         });
 
@@ -314,21 +293,21 @@ public class DocumentService {
     }
 
     @Transactional(readOnly = true)
-    public Resource downloadDocument(Integer documentId, String role) throws Exception {
+    public Resource downloadDocument(String token, Integer documentId) throws Exception {
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
         Optional<DocumentEntity> documentEntityOptional = documentRepo.findById(documentId);
         if (!documentEntityOptional.isPresent()) {
             throw new UniversalException("Файл не найден с ID " + documentId);
         }
         DocumentEntity documentEntity = documentEntityOptional.get();
 
-        if (!role.equals("accountant")){
+        if (!userRole.equals("accountant")){
             // Проверка доступа роли к документу
-            Optional<RoleDocumentEntity> roleDocumentOptional = roleDocumentRepo.findByRoleId_NameAndDocumentId(role, documentEntity);
+            Optional<RoleDocumentEntity> roleDocumentOptional = roleDocumentRepo.findByRoleId_NameAndDocumentId(userRole, documentEntity);
             if (!roleDocumentOptional.isPresent()) {
                 throw new UniversalException("У вас нету доступа к этому документу");
             }
         }
-
         Path filePath = Paths.get(uploadPath + "\\" + documentEntity.getTitle()).normalize();
         Resource resource = new UrlResource(filePath.toUri());
         if (resource.exists()) {

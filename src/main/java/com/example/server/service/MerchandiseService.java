@@ -32,8 +32,8 @@ public class MerchandiseService {
         this.jwtTokenProvider = jwtTokenProvider;
     }
     public Map<String, Object> createMerchandise(String token, MerchandiseEntity merchandise) throws UniversalException {
-        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
-        if (!creatorRole.equals("merchandiser")){
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("merchandiser")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
 
@@ -64,8 +64,8 @@ public class MerchandiseService {
 
     public Map<String, Object> updateMerchandise(String token, MerchandiseEntity merchandise) throws UniversalException {
 
-        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
-        if (!creatorRole.equals("merchandiser")){
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("merchandiser")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
         // Проверяем наличие полей
@@ -95,8 +95,8 @@ public class MerchandiseService {
     }
 
     public void deleteMerchandise(String token, Integer id) throws UniversalException {
-        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
-        if (!creatorRole.equals("merchandiser")){
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("merchandiser")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
 
@@ -116,8 +116,8 @@ public class MerchandiseService {
     }
 
     public Map<String, Object> getOne(String token, MerchandiseEntity merchandise) throws UniversalException {
-        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
-        if (!creatorRole.equals("merchandiser")){
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("merchandiser")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
         // Проверяем наличие полей
@@ -143,8 +143,8 @@ public class MerchandiseService {
     }
 
     public Page<MerchandiseEntity> getAll(String token, int page, int size, String sortBy) throws UniversalException {
-        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
-        if (!creatorRole.equals("merchandiser")){
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("merchandiser")){
             throw new UniversalException("У вас нету доступа к этому действию");
         }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
