@@ -43,6 +43,11 @@ public class JwtTokenProvider {
         return claims == null ? null : claims.get("role", String.class);
     }
 
+    public String getLoginFromToken(String token) {
+        Claims claims = verifyToken(token);
+        return claims == null ? null : claims.get("login", String.class);
+    }
+
     // Для инициализации проекта
     public String generateTokenForAccountant() {
         String role = "accountant"; // Устанавливаем роль "accountant" зафиксированно

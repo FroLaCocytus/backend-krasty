@@ -1,5 +1,6 @@
 package com.example.server.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -13,9 +14,11 @@ public class BasketEntity {
 
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private UserEntity userId;
 
     @OneToMany(mappedBy = "basketId")
+    @JsonIgnore
     private List<BasketProductEntity> manyBasketProduct;
 
     public BasketEntity() {

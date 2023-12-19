@@ -22,7 +22,7 @@ public class UserEntity {
     @Column(length = 255)
     private String address;
 
-    @Column(length = 11)
+    @Column(length = 12)
     private String phone_number;
 
     @ManyToOne

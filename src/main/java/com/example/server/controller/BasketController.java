@@ -1,6 +1,7 @@
 package com.example.server.controller;
 
 import com.example.server.exception.OrderAlreadyCreatedException;
+import com.example.server.exception.UniversalException;
 import com.example.server.service.BasketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +17,13 @@ public class BasketController {
     private BasketService basketService;
 
     @PostMapping("/add")
-    public ResponseEntity createAll(@RequestBody Map<String, Object> request){
+    public ResponseEntity create(@RequestHeader("Authorization") String authorizationHeader,
+                                 @RequestBody Map<String, Object> request){
         try {
-            return ResponseEntity.ok().body("{\"successfully\": \"" + basketService.createAll(request) + "\"}");
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(basketService.create(token, request));
+        } catch (UniversalException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (OrderAlreadyCreatedException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {

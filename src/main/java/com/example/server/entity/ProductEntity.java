@@ -1,5 +1,6 @@
 package com.example.server.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -8,21 +9,28 @@ public class ProductEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    private String product_name;
-    private String product_description;
+    
+    @Column(nullable = false, length = 50)
+    private String name;
+
+    @Column(nullable = false, length = 255)
+    private String description;
+    @Column(nullable = false)
     private Float price;
 
+    @Column(nullable = false, length = 255)
     private String img_path;
 
     @OneToOne(mappedBy = "productId")
+    @JsonIgnore
     private BasketProductEntity basketProduct;
 
     public ProductEntity() {
     }
 
-    public ProductEntity(String product_name, String product_description, Float price, String img_path) {
-        this.product_name = product_name;
-        this.product_description = product_description;
+    public ProductEntity(String name, String description, Float price, String img_path) {
+        this.name = name;
+        this.description = description;
         this.price = price;
         this.img_path = img_path;
     }
@@ -35,20 +43,20 @@ public class ProductEntity {
         this.id = id;
     }
 
-    public String getProduct_name() {
-        return product_name;
+    public String getName() {
+        return name;
     }
 
-    public void setProduct_name(String product_name) {
-        this.product_name = product_name;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public String getProduct_description() {
-        return product_description;
+    public String getDescription() {
+        return description;
     }
 
-    public void setProduct_description(String product_description) {
-        this.product_description = product_description;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public Float getPrice() {
@@ -65,5 +73,13 @@ public class ProductEntity {
 
     public void setImg_path(String img_path) {
         this.img_path = img_path;
+    }
+
+    public BasketProductEntity getBasketProduct() {
+        return basketProduct;
+    }
+
+    public void setBasketProduct(BasketProductEntity basketProduct) {
+        this.basketProduct = basketProduct;
     }
 }

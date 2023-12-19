@@ -1,5 +1,6 @@
 package com.example.server.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -9,14 +10,17 @@ public class BasketProductEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(nullable = false)
     private Integer count;
 
     @OneToOne
-    @JoinColumn(name = "product_id")
+    @JoinColumn(name = "product_id", nullable = false)
+    @JsonIgnore
     private ProductEntity productId;
 
     @ManyToOne
-    @JoinColumn(name = "basket_id")
+    @JoinColumn(name = "basket_id", nullable = false)
+    @JsonIgnore
     private BasketEntity basketId;
 
     public BasketProductEntity() {
