@@ -4,8 +4,8 @@ import com.example.server.entity.DocumentEntity;
 import com.example.server.entity.MerchandiseEntity;
 import com.example.server.entity.WarehouseEntity;
 import com.example.server.exception.UniversalException;
-import com.example.server.repository.MerchandiseRepo;
-import com.example.server.repository.WarehouseRepo;
+import com.example.server.repository.*;
+import com.example.server.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,12 +21,21 @@ import java.util.Optional;
 @Service
 public class MerchandiseService {
 
-    @Autowired
-    private MerchandiseRepo merchandiseRepo;
+    private final MerchandiseRepo merchandiseRepo;
+    private final WarehouseRepo warehouseRepo;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Autowired
-    private WarehouseRepo warehouseRepo;
-    public Map<String, Object> createMerchandise(MerchandiseEntity merchandise) throws UniversalException {
+    public MerchandiseService(MerchandiseRepo merchandiseRepo, WarehouseRepo warehouseRepo, JwtTokenProvider jwtTokenProvider) {
+        this.merchandiseRepo = merchandiseRepo;
+        this.warehouseRepo = warehouseRepo;
+        this.jwtTokenProvider = jwtTokenProvider;
+    }
+    public Map<String, Object> createMerchandise(String token, MerchandiseEntity merchandise) throws UniversalException {
+        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!creatorRole.equals("merchandiser")){
+            throw new UniversalException("У вас нету доступа к этому действию");
+        }
 
         // Проверяем наличие полей
         if (merchandise == null ||
@@ -53,7 +62,12 @@ public class MerchandiseService {
         return response;
     }
 
-    public Map<String, Object> updateMerchandise(@RequestBody MerchandiseEntity merchandise) throws UniversalException {
+    public Map<String, Object> updateMerchandise(String token, MerchandiseEntity merchandise) throws UniversalException {
+
+        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!creatorRole.equals("merchandiser")){
+            throw new UniversalException("У вас нету доступа к этому действию");
+        }
         // Проверяем наличие полей
         if (merchandise == null ||
                 merchandise.getId() == null ||
@@ -80,7 +94,12 @@ public class MerchandiseService {
         return response;
     }
 
-    public void deleteMerchandise(Integer id) throws UniversalException {
+    public void deleteMerchandise(String token, Integer id) throws UniversalException {
+        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!creatorRole.equals("merchandiser")){
+            throw new UniversalException("У вас нету доступа к этому действию");
+        }
+
         if (id == null) {
             throw new UniversalException("Некорректные данные");
         }
@@ -96,8 +115,11 @@ public class MerchandiseService {
         merchandiseRepo.delete(merchandiseDB);
     }
 
-    public Map<String, Object> getOne(@RequestBody MerchandiseEntity merchandise) throws UniversalException {
-
+    public Map<String, Object> getOne(String token, MerchandiseEntity merchandise) throws UniversalException {
+        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!creatorRole.equals("merchandiser")){
+            throw new UniversalException("У вас нету доступа к этому действию");
+        }
         // Проверяем наличие полей
         if (merchandise == null ||
                 merchandise.getId() == null) {
@@ -120,7 +142,11 @@ public class MerchandiseService {
         return response;
     }
 
-    public Page<MerchandiseEntity> getAll(int page, int size, String sortBy) {
+    public Page<MerchandiseEntity> getAll(String token, int page, int size, String sortBy) throws UniversalException {
+        String creatorRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!creatorRole.equals("merchandiser")){
+            throw new UniversalException("У вас нету доступа к этому действию");
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortBy));
         return merchandiseRepo.findAll(pageable);
     }

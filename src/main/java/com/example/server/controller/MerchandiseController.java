@@ -14,9 +14,11 @@ public class MerchandiseController {
     private MerchandiseService merchandiseService;
 
     @PostMapping("/create")
-    public ResponseEntity createMerchandise(@RequestBody MerchandiseEntity merchandise){
+    public ResponseEntity createMerchandise(@RequestHeader("Authorization") String authorizationHeader,
+                                            @RequestBody MerchandiseEntity merchandise){
         try {
-            return ResponseEntity.ok().body(merchandiseService.createMerchandise(merchandise));
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(merchandiseService.createMerchandise(token, merchandise));
         } catch (UniversalException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -25,9 +27,11 @@ public class MerchandiseController {
     }
 
     @PutMapping("/update")
-    public ResponseEntity updateMerchandise(@RequestBody MerchandiseEntity request){
+    public ResponseEntity updateMerchandise(@RequestHeader("Authorization") String authorizationHeader,
+                                            @RequestBody MerchandiseEntity request){
         try {
-            return ResponseEntity.ok().body(merchandiseService.updateMerchandise(request));
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(merchandiseService.updateMerchandise(token, request));
         } catch (UniversalException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -36,9 +40,11 @@ public class MerchandiseController {
     }
 
     @DeleteMapping("/delete")
-    public ResponseEntity deleteMerchandise(@RequestParam("id") Integer id){
+    public ResponseEntity deleteMerchandise(@RequestHeader("Authorization") String authorizationHeader,
+                                            @RequestParam("id") Integer id){
         try {
-            merchandiseService.deleteMerchandise(id);
+            String token = authorizationHeader.substring(7);
+            merchandiseService.deleteMerchandise(token, id);
             return ResponseEntity.ok().build();
         } catch (UniversalException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -48,9 +54,11 @@ public class MerchandiseController {
     }
 
     @PostMapping("/one")
-    public ResponseEntity getOne(@RequestBody MerchandiseEntity request){
+    public ResponseEntity getOne(@RequestHeader("Authorization") String authorizationHeader,
+                                 @RequestBody MerchandiseEntity request){
         try {
-            return ResponseEntity.ok().body(merchandiseService.getOne(request));
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(merchandiseService.getOne(token, request));
         } catch (UniversalException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -60,12 +68,16 @@ public class MerchandiseController {
 
     @GetMapping("/all")
     public ResponseEntity getAll(
+            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "sort", defaultValue = "id") String sort,
             @RequestParam(value = "role", defaultValue = "merchandise") String role){
         try {
-            return ResponseEntity.ok().body(merchandiseService.getAll(page, size, sort));
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(merchandiseService.getAll(token, page, size, sort));
+        } catch (UniversalException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Произошла ошибка:\n" + e);
         }

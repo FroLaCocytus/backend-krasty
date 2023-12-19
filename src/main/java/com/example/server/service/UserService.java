@@ -30,7 +30,6 @@ public class UserService {
     private final BasketRepo basketRepo;
     private final RoleRepo roleRepo;
     private final WarehouseRepo warehouseRepo;
-
     private final JwtTokenProvider jwtTokenProvider;
 
 
