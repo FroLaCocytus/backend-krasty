@@ -9,10 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -104,4 +101,39 @@ public class BasketService {
         return response;
     }
 
+    public Map<String, Object> getOne(String token) throws UniversalException {
+        String userLogin = jwtTokenProvider.getLoginFromToken(token);
+
+        UserEntity userDB = userRepo.findByLogin(userLogin);
+        if (userDB == null) {
+            throw new UniversalException("Пользователь с логином " + userLogin + " не найден.");
+        }
+
+        // Получаем корзину пользователя
+        BasketEntity userBasket = basketRepo.findByUserId(userDB);
+        if (userBasket == null) {
+            throw new UniversalException("Корзина для пользователя " + userLogin + " не найдена.");
+        }
+
+        List<BasketProductEntity> basketProducts = userBasket.getManyBasketProduct();
+
+        // Создаем список для хранения продуктов с их информацией
+        List<Map<String, Object>> productsList = new ArrayList<>();
+        for (BasketProductEntity basketProduct : basketProducts) {
+            ProductEntity product = basketProduct.getProductId(); // Получаем продукт
+
+            Map<String, Object> productInfo = new HashMap<>();
+            productInfo.put("name", product.getName()); // Название продукта
+            productInfo.put("count", basketProduct.getCount()); // Количество продукта
+            productInfo.put("description", product.getDescription()); // Описание продукта
+            productInfo.put("img_path", product.getImg_path()); // Путь к изображению продукта
+
+            productsList.add(productInfo); // Добавляем информацию о продукте в список
+        }
+
+        // Возвращаем ответ
+        Map<String, Object> response = new HashMap<>();
+        response.put("products", productsList);
+        return response;
+    }
 }

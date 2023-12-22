@@ -30,6 +30,18 @@ public class BasketController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/get")
+    public ResponseEntity getOne(@RequestHeader("Authorization") String authorizationHeader){
+        try {
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(basketService.getOne(token));
+        } catch (UniversalException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
 
 //System.out.println();
