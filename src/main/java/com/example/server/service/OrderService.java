@@ -1,11 +1,17 @@
 package com.example.server.service;
 
 import com.example.server.entity.OrderEntity;
+import com.example.server.entity.RoleDocumentEntity;
 import com.example.server.entity.UserEntity;
+import com.example.server.entity.WarehouseEntity;
 import com.example.server.exception.UniversalException;
 import com.example.server.repository.*;
 import com.example.server.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -54,33 +60,36 @@ public class OrderService {
 //        }
 //    }
 
-    public Boolean updateStatus(Map<String, Object> request) {
+    public void updateStatus(String token, Map<String, Object> request) throws UniversalException {
 
+        Integer orderId = (Integer) request.get("id");
         String orderStatus = (String) request.get("status");
-        String userLogin = (String) request.get("login");
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
 
-        if (userLogin == null || orderStatus == null) {
-            System.out.println("status или login равен нулю");
-            return false;
+        Optional<OrderEntity> optionalOrderEntity = orderRepo.findById(orderId);
+        if (optionalOrderEntity.isEmpty()) {
+            throw new UniversalException("Заказ не найден");
+        }
+        OrderEntity orderDB = optionalOrderEntity.get();
+
+
+        switch (orderStatus) {
+            case "accepted":
+                if (!"cashier".equals(userRole)) {
+                    throw new UniversalException("Только кассир может изменить статус на 'accepted'");
+                }
+                break;
+            case "delivering":
+                if (!"junior_chef".equals(userRole)) {
+                    throw new UniversalException("Только младший повар может изменить статус на 'delivering'");
+                }
+                break;
+            default:
+                throw new UniversalException("Неверный статус заказа");
         }
 
-        UserEntity userDB = userRepo.findByLogin(userLogin);
-
-        if (userDB == null) {
-            System.out.println("Пользователя не существует");
-            return false;
-        }
-
-        OrderEntity orderDB = orderRepo.findByUserIdAndStatusNot(userDB, "complited");
-
-        if (orderDB != null) {
-            orderDB.setStatus(orderStatus);
-            orderRepo.save(orderDB);
-            return true;
-        } else {
-            System.out.println("Заказ не найден");
-            return false;
-        }
+        orderDB.setStatus(orderStatus);
+        orderRepo.save(orderDB);
     }
 
     public Map<String, Object> getOne(String token) throws UniversalException {
@@ -102,24 +111,32 @@ public class OrderService {
         }
         return response;
     }
-    public Object getAllByRole(Map<String, Object> request) {
 
-        String userRole = (String) request.get("role");
-
-        if (userRole == null) {
-            System.out.println("role равно нулю");
-            return false;
+    public Map<String, Object> getAllCreated(String token, int page, int size, String sortBy) throws UniversalException {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, sortBy));
+        String userRole = jwtTokenProvider.getRoleFromToken(token);
+        if (!userRole.equals("cashier")) {
+            throw new UniversalException("У вас нет доступа к этому действию");
         }
+        Page<OrderEntity> orderPage = orderRepo.findAllByStatus("created", pageable);
 
-        if ("cashier".equals(userRole)) {
-            List<String> statuses = Arrays.asList("created", "accepted");
-            List<OrderEntity> listOrderDB = StreamSupport.stream(orderRepo.findAllByStatusIn(statuses).spliterator(), false)
-                    .collect(Collectors.toList());
-            return listOrderDB;
-        }
-
-        System.out.println("неизвестная ошибка");
-
-        return false;
+        Map<String, Object> response = new HashMap<>();
+        response.put("orders", orderPage.getContent());
+        response.put("currentPage", orderPage.getNumber());
+        response.put("totalItems", orderPage.getTotalElements());
+        response.put("totalPages", orderPage.getTotalPages());
+        return response;
     }
+
+//    public Map<String, Object> getAllAccepted(String token) throws UniversalException {
+//        String userRole = jwtTokenProvider.getRoleFromToken(token);
+//        if (!userRole.equals("junior chef")){
+//            throw new UniversalException("У вас нету доступа к этому действию");
+//        }
+//        List<OrderEntity> orders = orderRepo.findAllByStatus("accepted");
+//
+//        Map<String, Object> response = new HashMap<>();
+//        response.put("orders", orders);
+//        return response;
+//    }
 }

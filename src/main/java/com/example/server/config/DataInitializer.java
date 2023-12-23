@@ -147,6 +147,11 @@ public class DataInitializer {
         user5.put("password", "Aa1425");
         user5.put("role", "chef");
 
+        Map<String, Object> user6 = new HashMap<>();
+        user6.put("login", "junc");
+        user6.put("password", "Aa1425");
+        user6.put("role", "junior chef");
+
         userService.registration(user1);
 
         String token = jwtTokenProvider.generateTokenForAccountant();
@@ -155,6 +160,7 @@ public class DataInitializer {
         userService.registrationStaff(token, user3);
         userService.registrationStaff(token, user4);
         userService.registrationStaff(token, user5);
+        userService.registrationStaff(token, user6);
         System.out.println("Инициализация прошла успешно!");
     }
 

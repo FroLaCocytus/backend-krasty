@@ -25,10 +25,14 @@ public class OrderController {
 //        }
 //    }
 
-    @PostMapping("/update")
-    public ResponseEntity updateOrder(@RequestBody Map<String, Object> request){
+    @PutMapping("/update")
+    public ResponseEntity updateOrder(@RequestHeader("Authorization") String authorizationHeader,
+                                      @RequestBody Map<String, Object> request){
         try {
-            return ResponseEntity.ok().body("{\"successfully\": \"" + orderService.updateStatus(request) + "\"}");
+            String token = authorizationHeader.substring(7);
+            orderService.updateStatus(token, request);
+            return ResponseEntity.ok().build();
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -46,12 +50,26 @@ public class OrderController {
         }
     }
 
-    @PostMapping("/all")
-    public ResponseEntity getAllByRole(@RequestBody Map<String, Object> request){
+    @GetMapping("/created")
+    public ResponseEntity getAllCreated(@RequestHeader("Authorization") String authorizationHeader,
+                                        @RequestParam(value = "page", defaultValue = "0") int page,
+                                        @RequestParam(value = "size", defaultValue = "10") int size,
+                                        @RequestParam(value = "sort", defaultValue = "id") String sort){
         try {
-            return ResponseEntity.ok().body(orderService.getAllByRole(request));
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(orderService.getAllCreated(token, page, size, sort));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+//    @GetMapping("/accepted")
+//    public ResponseEntity getAllAccepted(@RequestHeader("Authorization") String authorizationHeader){
+//        try {
+//            String token = authorizationHeader.substring(7);
+//            return ResponseEntity.ok().body(orderService.getAllAccepted(token));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(e.getMessage());
+//        }
+//    }
 }
