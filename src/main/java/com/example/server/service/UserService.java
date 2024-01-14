@@ -180,6 +180,21 @@ public class UserService {
         return response;
     }
 
+    public Map<String, Object> get(String token) throws UserUnauthorizedException{
+
+        Claims tokenPayload = jwtTokenProvider.verifyToken(token);
+        if (tokenPayload == null){
+            throw new UserUnauthorizedException("Пользователь не авторизован");
+        }
+        UserEntity userDB = userRepo.findByLogin(tokenPayload.get("login", String.class));
+        Map<String, Object> response = new HashMap<>();
+        response.put("name", userDB.getName());
+        response.put("email", userDB.getEmail());
+        response.put("phone_number", userDB.getPhone_number());
+        response.put("address", userDB.getAddress());
+
+        return response;
+    }
 
     public Map<String, Object> updateUserInfo(String token, UserEntity request) throws UserUnauthorizedException{
 

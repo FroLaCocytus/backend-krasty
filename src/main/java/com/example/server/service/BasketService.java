@@ -20,6 +20,8 @@ public class BasketService {
     private final ProductRepo productRepo;
     private final BasketProductRepo basketProductRepo;
     private final OrderRepo orderRepo;
+
+    private final UserOrderRepo userOrderRepo;
     private final JwtTokenProvider jwtTokenProvider;
 
     @Autowired
@@ -28,12 +30,14 @@ public class BasketService {
                               ProductRepo productRepo,
                               BasketProductRepo basketProductRepo,
                               OrderRepo orderRepo,
+                              UserOrderRepo userOrderRepo,
                               JwtTokenProvider jwtTokenProvider) {
         this.userRepo = userRepo;
         this.basketRepo = basketRepo;
         this.productRepo = productRepo;
         this.basketProductRepo = basketProductRepo;
         this.orderRepo = orderRepo;
+        this.userOrderRepo = userOrderRepo;
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
@@ -53,7 +57,8 @@ public class BasketService {
             throw new UniversalException("Корзина для пользователя с логином " + userLogin + " не найдена.");
         }
 
-        if (basketProductRepo.findAllByBasketId(basketDB).size() > 0) {
+        List<UserOrderEntity> userOrders = userOrderRepo.findByUserId(userDB);
+        if (!userOrders.isEmpty()) {
             throw new OrderAlreadyCreatedException("У вас уже есть заказ");
         }
 
@@ -77,8 +82,12 @@ public class BasketService {
                 .collect(Collectors.joining(", "));
 
         // Создание и сохранение нового заказа с описанием
-        OrderEntity order = new OrderEntity(orderDescription, "created", userDB);
-        order = orderRepo.save(order);
+        OrderEntity order = new OrderEntity(orderDescription, "created");
+        OrderEntity orderDB = orderRepo.save(order);
+
+        // Сохранение связи между user и order
+        UserOrderEntity userOrder = new UserOrderEntity(userDB, orderDB);
+        userOrderRepo.save(userOrder);
 
         // Проход по всем продуктам в корзине и создание сущностей BasketProductEntity
         for (Map<String, Object> productInfo : listBasketProduct) {

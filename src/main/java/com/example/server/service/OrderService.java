@@ -1,9 +1,6 @@
 package com.example.server.service;
 
-import com.example.server.entity.OrderEntity;
-import com.example.server.entity.RoleDocumentEntity;
-import com.example.server.entity.UserEntity;
-import com.example.server.entity.WarehouseEntity;
+import com.example.server.entity.*;
 import com.example.server.exception.UniversalException;
 import com.example.server.repository.*;
 import com.example.server.security.JwtTokenProvider;
@@ -23,15 +20,18 @@ public class OrderService {
 
     private final OrderRepo orderRepo;
     private final UserRepo userRepo;
+    private final UserOrderRepo userOrderRepo;
     private final JwtTokenProvider jwtTokenProvider;
 
 
     @Autowired
     public OrderService(UserRepo userRepo,
                         OrderRepo orderRepo,
+                        UserOrderRepo userOrderRepo,
                         JwtTokenProvider jwtTokenProvider) {
         this.userRepo = userRepo;
         this.orderRepo = orderRepo;
+        this.userOrderRepo = userOrderRepo;
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
@@ -79,8 +79,8 @@ public class OrderService {
                     throw new UniversalException("Только кассир может изменить статус на 'accepted'");
                 }
                 break;
-            case "delivering":
-                if (!"junior_chef".equals(userRole)) {
+            case "packaging":
+                if (!"junior chef".equals(userRole)) {
                     throw new UniversalException("Только младший повар может изменить статус на 'delivering'");
                 }
                 break;
@@ -100,10 +100,11 @@ public class OrderService {
             throw new UniversalException("Пользователь с логином " + userLogin + " не найден.");
         }
 
-        Optional<OrderEntity> orderOptional = orderRepo.findByUserId(userDB);
+        List<UserOrderEntity> userOrders = userOrderRepo.findByUserId(userDB);
         Map<String, Object> response = new HashMap<>();
-        if (orderOptional.isPresent()) {
-            OrderEntity order = orderOptional.get();
+        if (!userOrders.isEmpty()) {
+            // Возьмем первый заказ пользователя для примера
+            OrderEntity order = userOrders.get(0).getOrderId();
             response.put("description", order.getDescription());
             response.put("status", order.getStatus());
         } else {
@@ -112,13 +113,28 @@ public class OrderService {
         return response;
     }
 
-    public Map<String, Object> getAllCreated(String token, int page, int size, String sortBy) throws UniversalException {
+    public Map<String, Object> getAll(String token, int page, int size, String sortBy, String status) throws UniversalException {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, sortBy));
         String userRole = jwtTokenProvider.getRoleFromToken(token);
-        if (!userRole.equals("cashier")) {
-            throw new UniversalException("У вас нет доступа к этому действию");
+
+        Page<OrderEntity> orderPage;
+
+        switch (status) {
+            case "created":
+                if (!"cashier".equals(userRole)) {
+                    throw new UniversalException("Только кассир имеет доступ к этим заказам");
+                }
+                orderPage = orderRepo.findAllByStatus(status, pageable);
+                break;
+            case "accepted":
+                if (!"junior chef".equals(userRole)) {
+                    throw new UniversalException("Только младший повар имеет доступ к этим заказам");
+                }
+                orderPage = orderRepo.findAllByStatus(status, pageable);
+                break;
+            default:
+                throw new UniversalException("Неверный статус заказа");
         }
-        Page<OrderEntity> orderPage = orderRepo.findAllByStatus("created", pageable);
 
         Map<String, Object> response = new HashMap<>();
         response.put("orders", orderPage.getContent());

@@ -3,6 +3,8 @@ package com.example.server.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "products")
 public class ProductEntity {
@@ -21,9 +23,9 @@ public class ProductEntity {
     @Column(nullable = false, length = 255)
     private String img_path;
 
-    @OneToOne(mappedBy = "productId")
+    @OneToMany(mappedBy = "productId")
     @JsonIgnore
-    private BasketProductEntity basketProduct;
+    private List<BasketProductEntity> manyBasketProduct;
 
     public ProductEntity() {
     }
@@ -75,11 +77,11 @@ public class ProductEntity {
         this.img_path = img_path;
     }
 
-    public BasketProductEntity getBasketProduct() {
-        return basketProduct;
+    public List<BasketProductEntity> getManyBasketProduct() {
+        return manyBasketProduct;
     }
 
-    public void setBasketProduct(BasketProductEntity basketProduct) {
-        this.basketProduct = basketProduct;
+    public void setManyBasketProduct(List<BasketProductEntity> manyBasketProduct) {
+        this.manyBasketProduct = manyBasketProduct;
     }
 }

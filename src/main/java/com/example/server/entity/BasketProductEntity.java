@@ -13,7 +13,7 @@ public class BasketProductEntity {
     @Column(nullable = false)
     private Integer count;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
     @JsonIgnore
     private ProductEntity productId;

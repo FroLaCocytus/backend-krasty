@@ -1,6 +1,5 @@
 package com.example.server.controller;
 
-import com.example.server.entity.MerchandiseEntity;
 import com.example.server.exception.UniversalException;
 import com.example.server.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,14 +49,15 @@ public class OrderController {
         }
     }
 
-    @GetMapping("/created")
-    public ResponseEntity getAllCreated(@RequestHeader("Authorization") String authorizationHeader,
-                                        @RequestParam(value = "page", defaultValue = "0") int page,
-                                        @RequestParam(value = "size", defaultValue = "10") int size,
-                                        @RequestParam(value = "sort", defaultValue = "id") String sort){
+    @GetMapping("/all")
+    public ResponseEntity getAll(@RequestHeader("Authorization") String authorizationHeader,
+                                 @RequestParam(value = "page", defaultValue = "0") int page,
+                                 @RequestParam(value = "status", defaultValue = "status") String status,
+                                 @RequestParam(value = "size", defaultValue = "10") int size,
+                                 @RequestParam(value = "sort", defaultValue = "id") String sort){
         try {
             String token = authorizationHeader.substring(7);
-            return ResponseEntity.ok().body(orderService.getAllCreated(token, page, size, sort));
+            return ResponseEntity.ok().body(orderService.getAll(token, page, size, sort, status));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

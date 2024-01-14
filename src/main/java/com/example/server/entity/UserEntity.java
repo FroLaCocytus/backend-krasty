@@ -1,5 +1,6 @@
 package com.example.server.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -32,8 +33,9 @@ public class UserEntity {
     @OneToOne(mappedBy = "userId")
     private BasketEntity basket;
 
-    @OneToOne(mappedBy = "userId")
-    private OrderEntity order;
+    @OneToMany(mappedBy = "userId")
+    @JsonIgnore
+    private List<UserOrderEntity> manyUserOrder;
 
     @OneToMany(mappedBy = "userId")
     private List<WarehouseEntity> manyWarehouse;
@@ -120,13 +122,21 @@ public class UserEntity {
         this.basket = basket;
     }
 
-    public OrderEntity getOrder() {
-        return order;
+    public List<UserOrderEntity> getManyUserOrder() {
+        return manyUserOrder;
     }
 
-    public void setOrder(OrderEntity order) {
-        this.order = order;
+    public void setManyUserOrder(List<UserOrderEntity> manyUserOrder) {
+        this.manyUserOrder = manyUserOrder;
     }
+
+    //    public OrderEntity getOrder() {
+//        return order;
+//    }
+//
+//    public void setOrder(OrderEntity order) {
+//        this.order = order;
+//    }
 
     public List<WarehouseEntity> getManyWarehouse() {
         return manyWarehouse;

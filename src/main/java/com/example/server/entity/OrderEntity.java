@@ -2,6 +2,8 @@ package com.example.server.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
+import java.util.List;
+
 @Entity
 @Table(name = "orders")
 public class OrderEntity {
@@ -16,19 +18,17 @@ public class OrderEntity {
     @Column(nullable = false, length = 11)
     private String status;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @OneToMany(mappedBy = "orderId")
     @JsonIgnore
-    private UserEntity userId;
+    private List<UserOrderEntity> manyUserOrder;
 
     public OrderEntity() {
     }
 
-    public OrderEntity(String description, String status, UserEntity userId) {
+    public OrderEntity(String description, String status) {
 
         this.description = description;
         this.status = status;
-        this.userId = userId;
     }
 
     public Integer getId() {
@@ -55,11 +55,4 @@ public class OrderEntity {
         this.status = status;
     }
 
-    public UserEntity getUserId() {
-        return userId;
-    }
-
-    public void setUserId(UserEntity userId) {
-        this.userId = userId;
-    }
 }
