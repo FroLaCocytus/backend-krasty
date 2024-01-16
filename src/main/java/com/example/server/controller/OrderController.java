@@ -49,6 +49,18 @@ public class OrderController {
         }
     }
 
+    @GetMapping("/courier")
+    public ResponseEntity getOneOrderCourier(@RequestHeader("Authorization") String authorizationHeader){
+        try {
+            String token = authorizationHeader.substring(7);
+            return ResponseEntity.ok().body(orderService.getOneOrderCourier(token));
+        } catch (UniversalException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Произошла ошибка:\n" + e);
+        }
+    }
+
     @GetMapping("/all")
     public ResponseEntity getAll(@RequestHeader("Authorization") String authorizationHeader,
                                  @RequestParam(value = "page", defaultValue = "0") int page,
