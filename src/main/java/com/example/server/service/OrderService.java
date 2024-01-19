@@ -101,13 +101,11 @@ public class OrderService {
                 userOrderRepo.save(userOrder);
                 break;
             case "completed":
-                if (!"courier".equals(userRole)) {
-                    throw new UniversalException("Только курьер может изменить статус на 'delivering'");
+                if (!"client".equals(userRole)) {
+                    throw new UniversalException("Только клиент может изменить статус на 'completed'");
                 }
-                // Получение сущности клиента
-                UserEntity client = getClientFromOrder(orderDB, userDB);
                 // Очищаем корзину клиента
-                clearClientBasket(client);
+                clearClientBasket(userDB);
                 // Удаляем связи между заказом и пользователями
                 userOrderRepo.deleteByOrderId(orderDB);
 
@@ -133,6 +131,7 @@ public class OrderService {
         if (!userOrders.isEmpty()) {
             // Возьмем первый заказ пользователя
             OrderEntity order = userOrders.get(0).getOrderId();
+            response.put("id", order.getId());
             response.put("description", order.getDescription());
             response.put("status", order.getStatus());
         } else {
