@@ -166,6 +166,7 @@ public class OrderService {
         response.put("id", courierOrder.getId());
         response.put("description", courierOrder.getDescription());
         response.put("clientName", client.getName());
+        response.put("clientNumber", client.getPhone_number());
         response.put("deliveryAddress", client.getAddress());
 
         return response;
