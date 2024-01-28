@@ -49,7 +49,7 @@ public class DocumentService {
     public DocumentService(DocumentRepo documentRepo,
                            RoleRepo roleRepo,
                            RoleDocumentRepo roleDocumentRepo,
-                           @Value("${upload.path}") String uploadPath,
+                           @Value("${document.path}") String uploadPath,
                            JwtTokenProvider jwtTokenProvider) {
         this.documentRepo = documentRepo;
         this.roleRepo = roleRepo;
