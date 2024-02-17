@@ -16,7 +16,7 @@ public class ProductController {
         try {
             return ResponseEntity.ok().body(productService.getAll());
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Произошла ошибка" + e);
+            return ResponseEntity.badRequest().body("Произошла ошибка: " + e);
         }
     }
 
